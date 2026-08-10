@@ -2162,6 +2162,12 @@ func toAPIErrorCode(ctx context.Context, err error) (apiErr APIErrorCode) {
 	// Only return ErrClientDisconnected if the provided context is actually canceled.
 	// This way downstream context.Canceled will still report ErrRequestTimedout
 	if contextCanceled(ctx) && errors.Is(ctx.Err(), context.Canceled) {
+		// If the global context is also canceled, the server is shutting down.
+		// Return 503 (Service Unavailable) instead of 499 (Client Disconnected)
+		// so S3 SDKs can retry the request on a different node.
+		if contextCanceled(GlobalContext) {
+			return ErrServerNotInitialized
+		}
 		return ErrClientDisconnected
 	}
 
@@ -2253,7 +2259,11 @@ func toAPIErrorCode(ctx context.Context, err error) (apiErr APIErrorCode) {
 	case errKMSDefaultKeyAlreadyConfigured:
 		apiErr = ErrKMSDefaultKeyAlreadyConfigured
 	case context.Canceled:
-		apiErr = ErrClientDisconnected
+		if contextCanceled(GlobalContext) {
+			apiErr = ErrServerNotInitialized
+		} else {
+			apiErr = ErrClientDisconnected
+		}
 	case context.DeadlineExceeded:
 		apiErr = ErrRequestTimedout
 	case objectlock.ErrInvalidRetentionDate:
