@@ -140,9 +140,9 @@ func getConditionValues(r *http.Request, lc string, cred auth.Credentials) map[s
 		"authType":         {authtype},
 	}
 
-		if vid != "" {
+	if vid != "" {
 		args["versionid"] = []string{vid}
-		}
+	}
 	if lc != "" {
 		args["LocationConstraint"] = []string{lc}
 	}
